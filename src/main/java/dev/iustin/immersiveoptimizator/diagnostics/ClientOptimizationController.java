@@ -21,6 +21,9 @@ public final class ClientOptimizationController {
     private static int baselineRenderDistance = -1;
     private static int lastManagedRenderDistance = -1;
     private static boolean turboEnabled;
+    private static PerformanceProfile profileBeforeLowEnd;
+    private static boolean autoBeforeLowEnd;
+    private static boolean adaptiveDistanceBeforeLowEnd;
 
     private ClientOptimizationController() {}
 
@@ -77,7 +80,9 @@ public final class ClientOptimizationController {
         }
 
         PerformanceProfile next = ProfileDecision.choose(
-                activeProfile, fps, frameP95Ms, lowPerformanceWindows, stableWindows);
+                activeProfile, fps, frameP95Ms, lowPerformanceWindows, stableWindows,
+                OptimizerConfig.LOW_FPS_THRESHOLD.get(),
+                OptimizerConfig.HIGH_FRAME_TIME_THRESHOLD_MS.get());
         if (next != activeProfile) {
             activeProfile = next;
             applyProfile(Minecraft.getInstance(), activeProfile);
@@ -227,19 +232,31 @@ public final class ClientOptimizationController {
 
     public static void toggleLowEndMode() {
         boolean enable = !OptimizerConfig.MOBILE_LOW_END_MODE.get();
-        OptimizerConfig.MOBILE_LOW_END_MODE.set(enable);
+        Minecraft minecraft = Minecraft.getInstance();
         if (enable) {
+            profileBeforeLowEnd = getActiveProfile();
+            autoBeforeLowEnd = OptimizerConfig.AUTO_PROFILE.get();
+            adaptiveDistanceBeforeLowEnd = OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.get();
+            OptimizerConfig.MOBILE_LOW_END_MODE.set(true);
             OptimizerConfig.AUTO_PROFILE.set(false);
             OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.set(true);
             turboEnabled = false;
             activeProfile = PerformanceProfile.ECO;
-            storeManualProfile(PerformanceProfile.ECO, Minecraft.getInstance());
+            storeManualProfile(PerformanceProfile.ECO, minecraft);
         } else {
-            activeProfile = OptimizerConfig.AUTO_PROFILE.get()
-                    ? ProfileDecision.hardwareBaseline(Runtime.getRuntime().availableProcessors(), Runtime.getRuntime().maxMemory())
-                    : configuredManualProfile(Minecraft.getInstance());
+            OptimizerConfig.MOBILE_LOW_END_MODE.set(false);
+            OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.set(adaptiveDistanceBeforeLowEnd);
+            if (autoBeforeLowEnd) {
+                setAutomaticEnabled(true);
+                profileBeforeLowEnd = null;
+                return;
+            }
+            activeProfile = profileBeforeLowEnd == null
+                    ? configuredManualProfile(minecraft) : profileBeforeLowEnd;
+            storeManualProfile(activeProfile, minecraft);
+            profileBeforeLowEnd = null;
         }
-        applyProfile(Minecraft.getInstance(), activeProfile);
+        applyProfile(minecraft, activeProfile);
     }
 
     public static void toggleAdaptiveDistance() {

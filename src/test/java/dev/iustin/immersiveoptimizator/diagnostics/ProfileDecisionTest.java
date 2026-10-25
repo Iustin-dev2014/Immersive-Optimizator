@@ -30,6 +30,14 @@ class ProfileDecisionTest {
     }
 
     @Test
+    void explicitThresholdsCanBeTestedWithoutLoadingForgeConfig() {
+        assertEquals(PerformanceProfile.BALANCED,
+                ProfileDecision.choose(PerformanceProfile.BALANCED, 35, 25.0, 1, 0, 40, 30.0));
+        assertEquals(PerformanceProfile.ULTRA_PERFORMANCE,
+                ProfileDecision.choose(PerformanceProfile.BALANCED, 35, 25.0, 2, 0, 40, 30.0));
+    }
+
+    @Test
     void stablePerformanceStepsBackFromPerformance() {
         assertEquals(PerformanceProfile.BALANCED, ProfileDecision.choose(PerformanceProfile.PERFORMANCE, 60, 16.0, 0, 3));
     }

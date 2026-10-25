@@ -37,6 +37,7 @@ public final class ClientDashboardScreen extends Screen {
     private int buttonLeft;
     private int buttonTotalWidth;
     private int columnWidth;
+    private List<String> compatibilityLines = List.of();
 
     public ClientDashboardScreen(Screen parent) {
         this(parent, 0, "");
@@ -178,6 +179,20 @@ public final class ClientDashboardScreen extends Screen {
     }
 
     private void buildCompatibilityPage() {
+        compatibilityLines = new ArrayList<>();
+        compatibilityLines.add("Embeddium (renderer): " + present("embeddium"));
+        compatibilityLines.add("ModernFix (load/memory): " + present("modernfix"));
+        compatibilityLines.add("FerriteCore (memory): " + present("ferritecore"));
+        compatibilityLines.add("ImmediatelyFast (rendering): " + present("immediatelyfast"));
+        List<String> warnings = CompatibilityDiagnostics.warnings();
+        if (!OptimizerConfig.COMPATIBILITY_WARNINGS.get()) {
+            compatibilityLines.add("Built-in compatibility warnings are disabled.");
+        } else if (warnings.isEmpty()) {
+            compatibilityLines.add("No known conflict in the built-in checks.");
+        } else {
+            compatibilityLines.add("WARNING: " + warnings.get(0));
+            if (warnings.size() > 1) compatibilityLines.add(warnings.get(1));
+        }
         addRenderableWidget(Button.builder(Component.translatable("gui.immersiveoptimizator.compatibility_warnings",
                         onOff(OptimizerConfig.COMPATIBILITY_WARNINGS.get())),
                         button -> {
@@ -195,7 +210,7 @@ public final class ClientDashboardScreen extends Screen {
         int y = contentTop + row * rowGap;
         addRenderableWidget(Button.builder(label, button -> {
                     action.run();
-                    refresh();
+                    if (Minecraft.getInstance().screen == this) refresh();
                 })
                 .bounds(x, y, columnWidth, 20).build());
     }
@@ -246,22 +261,10 @@ public final class ClientDashboardScreen extends Screen {
         int y = 54;
         int x = Math.max(8, width / 2 - 145);
         int maxLines = height <= 165 ? 4 : 6;
-        List<String> lines = new ArrayList<>();
-        lines.add("Embeddium (terrain renderer): " + present("embeddium"));
-        lines.add("ModernFix (load/memory): " + present("modernfix"));
-        lines.add("FerriteCore (memory): " + present("ferritecore"));
-        lines.add("ImmediatelyFast (rendering): " + present("immediatelyfast"));
-        List<String> warnings = CompatibilityDiagnostics.warnings();
-        if (warnings.isEmpty()) {
-            lines.add("No known conflict in the built-in checks.");
-        } else {
-            lines.add("WARNING: " + warnings.get(0));
-            if (warnings.size() > 1) lines.add(warnings.get(1));
+        for (int i = 0; i < Math.min(maxLines, compatibilityLines.size()); i++) {
+            graphics.drawString(font, fit(compatibilityLines.get(i), width - 16), x, y + i * 12, 0xE0E0E0, false);
         }
-        for (int i = 0; i < Math.min(maxLines, lines.size()); i++) {
-            graphics.drawString(font, fit(lines.get(i), width - 16), x, y + i * 12, 0xE0E0E0, false);
-        }
-        if (!statusMessage.isBlank()) {
+        if (!statusMessage.isBlank() && height > 165) {
             graphics.drawCenteredString(font, fit(statusMessage, width - 18), width / 2,
                     Math.max(0, height - 39), 0xFFFF80);
         }
