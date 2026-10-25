@@ -11,7 +11,7 @@ class PerformanceMathTest {
         double[] values = {40.0, 10.0, 30.0, 20.0};
 
         assertEquals(40.0, PerformanceMath.percentile(values, 0.95));
-        assertEquals(10.0, values[0], "input array must not be sorted in place");
+        assertEquals(40.0, values[0], "input array must not be sorted in place");
     }
 
     @Test
