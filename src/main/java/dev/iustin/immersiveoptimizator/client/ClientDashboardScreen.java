@@ -1,69 +1,290 @@
 package dev.iustin.immersiveoptimizator.client;
 
 import dev.iustin.immersiveoptimizator.config.OptimizerConfig;
+import dev.iustin.immersiveoptimizator.config.OptimizerConfig.PerformanceProfile;
 import dev.iustin.immersiveoptimizator.diagnostics.ClientOptimizationController;
 import dev.iustin.immersiveoptimizator.diagnostics.ClientPerformanceMonitor;
+import dev.iustin.immersiveoptimizator.diagnostics.CompatibilityDiagnostics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.fml.ModList;
 
-/** In-game control panel for profiles and local diagnostics. */
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Multi-page optimization dashboard. The UI is touch-friendly and uses vanilla
+ * widgets so it can also be operated in Android Java launchers that support Forge.
+ */
 public final class ClientDashboardScreen extends Screen {
+    private static final String[] TABS = {
+            "gui.immersiveoptimizator.tab.home",
+            "gui.immersiveoptimizator.tab.performance",
+            "gui.immersiveoptimizator.tab.graphics",
+            "gui.immersiveoptimizator.tab.diagnostics",
+            "gui.immersiveoptimizator.tab.mobile",
+            "gui.immersiveoptimizator.tab.compatibility"
+    };
+
     private final Screen parent;
-    private String statusMessage = "Metrics stay on this computer.";
+    private final int page;
+    private String statusMessage;
+    private int contentTop;
+    private int rowGap;
+    private int buttonLeft;
+    private int buttonTotalWidth;
+    private int columnWidth;
 
     public ClientDashboardScreen(Screen parent) {
-        super(Component.literal("Immersive Optimizator"));
+        this(parent, 0, "");
+    }
+
+    public ClientDashboardScreen(Screen parent, int page, String statusMessage) {
+        super(Component.translatable("gui.immersiveoptimizator.title"));
         this.parent = parent;
+        this.page = Math.max(0, Math.min(TABS.length - 1, page));
+        this.statusMessage = statusMessage == null ? "" : statusMessage;
     }
 
     @Override
     protected void init() {
-        int left = this.width / 2 - 150;
-        int top = Math.max(64, this.height / 2 - 92);
-        addRenderableWidget(Button.builder(Component.literal("Cycle profile: " + label(ClientOptimizationController.getActiveProfile())),
-                button -> { ClientOptimizationController.cycleProfile(); clearWidgets(); init(); })
-                .bounds(left, top, 300, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Automatic: " + (OptimizerConfig.AUTO_PROFILE.get() ? "ON" : "OFF")),
-                button -> { ClientOptimizationController.toggleAutomatic(); clearWidgets(); init(); })
-                .bounds(left, top + 25, 145, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Adaptive distance: " + (OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.get() ? "ON" : "OFF")),
-                button -> { ClientOptimizationController.toggleAdaptiveDistance(); clearWidgets(); init(); })
-                .bounds(left + 155, top + 25, 145, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Turbo: " + (ClientOptimizationController.isTurboEnabled() ? "ON" : "OFF")),
-                button -> { ClientOptimizationController.toggleTurbo(); clearWidgets(); init(); })
-                .bounds(left, top + 50, 145, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Export report"),
-                button -> {
-                    try {
-                        statusMessage = "Saved: " + ClientPerformanceMonitor.exportReport().getFileName();
-                    } catch (Exception exception) {
-                        statusMessage = "Export failed: " + exception.getClass().getSimpleName();
-                    }
-                }).bounds(left + 155, top + 50, 145, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-                .bounds(left, top + 80, 300, 20).build());
+        int gap = 2;
+        int usableWidth = Math.max(1, this.width - 16);
+        int tabWidth = Math.max(1, (usableWidth - gap * (TABS.length - 1)) / TABS.length);
+        for (int i = 0; i < TABS.length; i++) {
+            final int targetPage = i;
+            int x = 8 + i * (tabWidth + gap);
+            addRenderableWidget(Button.builder(Component.translatable(TABS[i]),
+                            button -> openPage(targetPage))
+                    .bounds(x, 31, tabWidth, 20).build());
+        }
+
+        buttonTotalWidth = Math.min(300, Math.max(1, this.width - 16));
+        buttonLeft = (this.width - buttonTotalWidth) / 2;
+        columnWidth = Math.max(1, (buttonTotalWidth - 6) / 2);
+        rowGap = this.height > 220 ? 25 : 22;
+        contentTop = page == 5
+                ? Math.max(104, Math.min(128, this.height - 52))
+                : (this.height > 220 ? 64 : 54);
+
+        switch (page) {
+            case 0 -> buildHomePage();
+            case 1 -> buildPerformancePage();
+            case 2 -> buildGraphicsPage();
+            case 3 -> buildDiagnosticsPage();
+            case 4 -> buildMobilePage();
+            case 5 -> buildCompatibilityPage();
+            default -> buildHomePage();
+        }
+
+        int doneWidth = Math.min(140, Math.max(1, this.width - 16));
+        addRenderableWidget(Button.builder(Component.translatable("gui.immersiveoptimizator.done"),
+                        button -> onClose())
+                .bounds((this.width - doneWidth) / 2, Math.max(0, this.height - 25), doneWidth, 20).build());
+    }
+
+    private void buildHomePage() {
+        addAction(Component.translatable("gui.immersiveoptimizator.profile", profileLabel(ClientOptimizationController.getActiveProfile())),
+                0, 0, ClientOptimizationController::cycleProfile);
+        addAction(Component.translatable("gui.immersiveoptimizator.automatic", onOff(OptimizerConfig.AUTO_PROFILE.get())),
+                1, 0, ClientOptimizationController::toggleAutomatic);
+        addAction(Component.translatable("gui.immersiveoptimizator.turbo", onOff(ClientOptimizationController.isTurboEnabled())),
+                0, 1, ClientOptimizationController::toggleTurbo);
+        addAction(Component.translatable("gui.immersiveoptimizator.low_end", onOff(ClientOptimizationController.isLowEndMode())),
+                1, 1, ClientOptimizationController::toggleLowEndMode);
+        addAction(Component.translatable("gui.immersiveoptimizator.context_profiles", onOff(OptimizerConfig.USE_CONTEXT_PROFILES.get())),
+                0, 2, ClientOptimizationController::toggleContextProfiles);
+        addAction(Component.translatable("gui.immersiveoptimizator.open_diagnostics"),
+                1, 2, () -> openPage(3));
+    }
+
+    private void buildPerformancePage() {
+        addAction(Component.translatable("gui.immersiveoptimizator.automatic", onOff(OptimizerConfig.AUTO_PROFILE.get())),
+                0, 0, ClientOptimizationController::toggleAutomatic);
+        addAction(Component.translatable("gui.immersiveoptimizator.context_profiles", onOff(OptimizerConfig.USE_CONTEXT_PROFILES.get())),
+                1, 0, ClientOptimizationController::toggleContextProfiles);
+        addAction(Component.translatable("gui.immersiveoptimizator.singleplayer_profile",
+                        profileLabel(OptimizerConfig.SINGLEPLAYER_PROFILE.get())),
+                0, 1, ClientOptimizationController::cycleSingleplayerProfile);
+        addAction(Component.translatable("gui.immersiveoptimizator.multiplayer_profile",
+                        profileLabel(OptimizerConfig.MULTIPLAYER_PROFILE.get())),
+                1, 1, ClientOptimizationController::cycleMultiplayerProfile);
+        addAction(Component.translatable("gui.immersiveoptimizator.low_fps_threshold",
+                        OptimizerConfig.LOW_FPS_THRESHOLD.get()),
+                0, 2, ClientOptimizationController::cycleLowFpsThreshold);
+        addAction(Component.translatable("gui.immersiveoptimizator.frame_threshold",
+                        OptimizerConfig.HIGH_FRAME_TIME_THRESHOLD_MS.get()),
+                1, 2, ClientOptimizationController::cycleHighFrameTimeThreshold);
+    }
+
+    private void buildGraphicsPage() {
+        addAction(Component.translatable("gui.immersiveoptimizator.adaptive_distance",
+                        onOff(OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.get())),
+                0, 0, ClientOptimizationController::toggleAdaptiveDistance);
+        addAction(Component.translatable("gui.immersiveoptimizator.eco_distance",
+                        OptimizerConfig.ECO_RENDER_DISTANCE_CAP.get()),
+                1, 0, ClientOptimizationController::cycleEcoRenderDistanceCap);
+        addAction(Component.translatable("gui.immersiveoptimizator.ultra_distance",
+                        OptimizerConfig.ULTRA_RENDER_DISTANCE_CAP.get()),
+                0, 1, ClientOptimizationController::cycleUltraRenderDistanceCap);
+        addAction(Component.translatable("gui.immersiveoptimizator.apply_profile", "Eco"),
+                1, 1, () -> ClientOptimizationController.applyManualProfile(PerformanceProfile.ECO));
+        addAction(Component.translatable("gui.immersiveoptimizator.apply_profile", "Performance"),
+                0, 2, () -> ClientOptimizationController.applyManualProfile(PerformanceProfile.PERFORMANCE));
+        addAction(Component.translatable("gui.immersiveoptimizator.apply_profile", "Ultra"),
+                1, 2, () -> ClientOptimizationController.applyManualProfile(PerformanceProfile.ULTRA_PERFORMANCE));
+    }
+
+    private void buildDiagnosticsPage() {
+        addAction(Component.translatable("gui.immersiveoptimizator.monitoring",
+                        onOff(OptimizerConfig.PERFORMANCE_MONITORING.get())),
+                0, 0, ClientOptimizationController::toggleMonitoring);
+        addAction(Component.translatable("gui.immersiveoptimizator.export_enabled",
+                        onOff(OptimizerConfig.EXPORT_DIAGNOSTICS.get())),
+                1, 0, ClientOptimizationController::toggleExportDiagnostics);
+        addAction(Component.translatable("gui.immersiveoptimizator.export_report"),
+                0, 1, this::exportReport);
+        addAction(Component.translatable("gui.immersiveoptimizator.compatibility_warnings",
+                        onOff(OptimizerConfig.COMPATIBILITY_WARNINGS.get())),
+                1, 1, ClientOptimizationController::toggleCompatibilityWarnings);
+        addAction(Component.translatable("gui.immersiveoptimizator.show_warnings"),
+                0, 2, () -> setStatus(CompatibilityDiagnostics.summary()));
+        addAction(Component.translatable("gui.immersiveoptimizator.return_auto"),
+                1, 2, () -> {
+                    ClientOptimizationController.setAutomaticEnabled(true);
+                });
+    }
+
+    private void buildMobilePage() {
+        addAction(Component.translatable("gui.immersiveoptimizator.low_end", onOff(ClientOptimizationController.isLowEndMode())),
+                0, 0, ClientOptimizationController::toggleLowEndMode);
+        addAction(Component.translatable("gui.immersiveoptimizator.turbo", onOff(ClientOptimizationController.isTurboEnabled())),
+                1, 0, ClientOptimizationController::toggleTurbo);
+        addAction(Component.translatable("gui.immersiveoptimizator.adaptive_distance",
+                        onOff(OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.get())),
+                0, 1, ClientOptimizationController::toggleAdaptiveDistance);
+        addAction(Component.translatable("gui.immersiveoptimizator.eco_distance",
+                        OptimizerConfig.ECO_RENDER_DISTANCE_CAP.get()),
+                1, 1, ClientOptimizationController::cycleEcoRenderDistanceCap);
+        addAction(Component.translatable("gui.immersiveoptimizator.apply_profile", "Eco"),
+                0, 2, () -> ClientOptimizationController.applyManualProfile(PerformanceProfile.ECO));
+        addAction(Component.translatable("gui.immersiveoptimizator.return_auto"),
+                1, 2, () -> {
+                    ClientOptimizationController.setAutomaticEnabled(true);
+                });
+    }
+
+    private void buildCompatibilityPage() {
+        addRenderableWidget(Button.builder(Component.translatable("gui.immersiveoptimizator.compatibility_warnings",
+                        onOff(OptimizerConfig.COMPATIBILITY_WARNINGS.get())),
+                        button -> {
+                            ClientOptimizationController.toggleCompatibilityWarnings();
+                            refresh();
+                        })
+                .bounds(buttonLeft, contentTop, columnWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("gui.immersiveoptimizator.export_report"),
+                        button -> { exportReport(); refresh(); })
+                .bounds(buttonLeft + columnWidth + 6, contentTop, columnWidth, 20).build());
+    }
+
+    private void addAction(Component label, int column, int row, Runnable action) {
+        int x = buttonLeft + column * (columnWidth + 6);
+        int y = contentTop + row * rowGap;
+        addRenderableWidget(Button.builder(label, button -> {
+                    action.run();
+                    refresh();
+                })
+                .bounds(x, y, columnWidth, 20).build());
+    }
+
+    private void exportReport() {
+        try {
+            statusMessage = Component.translatable("gui.immersiveoptimizator.report_saved",
+                    ClientPerformanceMonitor.exportReport().getFileName().toString()).getString();
+        } catch (Exception exception) {
+            statusMessage = Component.translatable("gui.immersiveoptimizator.report_failed",
+                    exception.getClass().getSimpleName()).getString();
+        }
+    }
+
+    private void setStatus(String message) {
+        statusMessage = message == null ? "" : message;
+    }
+
+    private void openPage(int targetPage) {
+        Minecraft.getInstance().setScreen(new ClientDashboardScreen(parent, targetPage, statusMessage));
+    }
+
+    private void refresh() {
+        Minecraft.getInstance().setScreen(new ClientDashboardScreen(parent, page, statusMessage));
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
+
         int center = width / 2;
-        int top = Math.max(28, height / 2 - 126);
-        ClientPerformanceMonitor.Snapshot s = ClientPerformanceMonitor.latest();
-        graphics.drawCenteredString(font, title, center, top, 0xFFFFFF);
-        graphics.drawCenteredString(font, "FPS: " + s.fps() + "   Frame p95: " + s.p95FrameMs() + " ms", center, top + 18, 0xE0E0E0);
-        graphics.drawCenteredString(font, "Heap: " + s.heapUsedMiB() + "/" + s.heapMaxMiB() + " MiB   GC: " + s.gcTimeDeltaMs() + " ms / window", center, top + 31, 0xC0C0C0);
-        graphics.drawCenteredString(font, "CPU threads: " + Runtime.getRuntime().availableProcessors()
-                + "   Render distance: " + Minecraft.getInstance().options.renderDistance().get(), center, top + 44, 0xC0C0C0);
-        graphics.drawCenteredString(font, "Turbo is a graphics preset, not a CPU overclock.", center, height - 28, 0xAAAAAA);
-        graphics.drawCenteredString(font, statusMessage, center, height - 16, 0xFFFF80);
+        ClientPerformanceMonitor.Snapshot snapshot = ClientPerformanceMonitor.latest();
+        graphics.drawCenteredString(font, title, center, 7, 0xFFFFFF);
+        String metrics = "FPS " + snapshot.fps() + " | p95 " + snapshot.p95FrameMs() + " ms | "
+                + snapshot.heapUsedMiB() + "/" + snapshot.heapMaxMiB() + " MiB";
+        graphics.drawCenteredString(font, fit(metrics, width - 16), center, 19, 0xD5D5D5);
+
+        if (page == 5) {
+            drawCompatibilityDetails(graphics);
+        } else if (!statusMessage.isBlank()) {
+            graphics.drawCenteredString(font, fit(statusMessage, width - 18), center,
+                    Math.max(0, height - 38), 0xFFFF80);
+        }
     }
 
-    private static String label(OptimizerConfig.PerformanceProfile profile) {
+    private void drawCompatibilityDetails(GuiGraphics graphics) {
+        int y = 54;
+        int x = Math.max(8, width / 2 - 145);
+        int maxLines = height <= 165 ? 4 : 6;
+        List<String> lines = new ArrayList<>();
+        lines.add("Embeddium (terrain renderer): " + present("embeddium"));
+        lines.add("ModernFix (load/memory): " + present("modernfix"));
+        lines.add("FerriteCore (memory): " + present("ferritecore"));
+        lines.add("ImmediatelyFast (rendering): " + present("immediatelyfast"));
+        List<String> warnings = CompatibilityDiagnostics.warnings();
+        if (warnings.isEmpty()) {
+            lines.add("No known conflict in the built-in checks.");
+        } else {
+            lines.add("WARNING: " + warnings.get(0));
+            if (warnings.size() > 1) lines.add(warnings.get(1));
+        }
+        for (int i = 0; i < Math.min(maxLines, lines.size()); i++) {
+            graphics.drawString(font, fit(lines.get(i), width - 16), x, y + i * 12, 0xE0E0E0, false);
+        }
+        if (!statusMessage.isBlank()) {
+            graphics.drawCenteredString(font, fit(statusMessage, width - 18), width / 2,
+                    Math.max(0, height - 39), 0xFFFF80);
+        }
+    }
+
+    private static String present(String id) {
+        try {
+            return ModList.get().isLoaded(id) ? "detected" : "not detected";
+        } catch (RuntimeException ignored) {
+            return "unknown";
+        }
+    }
+
+    private String fit(String text, int maxWidth) {
+        if (text == null || maxWidth <= 0) return "";
+        return font.plainSubstrByWidth(text, maxWidth);
+    }
+
+    private static String onOff(boolean enabled) {
+        return enabled ? "ON" : "OFF";
+    }
+
+    private static String profileLabel(PerformanceProfile profile) {
         return switch (profile) {
             case ECO -> "Eco";
             case BALANCED -> "Balanced";
@@ -75,5 +296,7 @@ public final class ClientDashboardScreen extends Screen {
     }
 
     @Override
-    public void onClose() { Minecraft.getInstance().setScreen(parent); }
+    public void onClose() {
+        Minecraft.getInstance().setScreen(parent);
+    }
 }

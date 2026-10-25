@@ -1,47 +1,59 @@
 # Immersive Optimizator
 
-A client-side performance diagnostics and adaptive graphics mod for Minecraft Forge 1.20.1 (Forge 47.2.0, Java 17).
+Client-side optimization controls and diagnostics for Minecraft Java Edition 1.20.1, Forge 47.2.0, Java 17.
 
-## Version 0.4.0-alpha.1
+## Version 0.5.0-alpha.1
 
-- Hardware-aware startup profile using logical processor count and maximum JVM heap.
-- Profiles: **Eco**, **Balanced**, **Performance**, and **Ultra** (plus Custom/Quality compatibility values).
-- Automatic profile decisions based on FPS and p95 frame time, with hysteresis to avoid rapid switching.
-- In-game dashboard on **O** with profile cycling, automatic mode, adaptive render distance, Turbo preset, and report export.
-- Local diagnostic reports include OS/architecture, Java version, logical processors, heap figures, active profile, render distance, FPS/frame time and GC deltas.
-- Adaptive render distance is enabled by default for Eco/Ultra; Eco targets 4–6 chunks and Ultra caps at 8 chunks.
-- Profile application avoids saving options unless values changed.
-- No forced garbage collection, no world-save edits, no changes to world/server simulation, and no automatic network telemetry.
+- Adds an **Optimization Settings** button directly to the vanilla **Video Settings** screen using Forge's `ScreenEvent.Init.Post` event; the vanilla screen is not replaced.
+- Provides a multi-page control panel: Home, Performance, Video, Diagnostics, Mobile, and Mods.
+- Profiles: Eco, Balanced, Performance, Ultra, plus Quality/Custom compatibility values.
+- Hardware startup heuristic based on logical processor count and maximum JVM heap; adaptive choices use FPS and p95 frame time.
+- Configurable critical FPS/frame-time thresholds to tune how aggressively the automatic policy reacts.
+- Separate manual profiles for single-player and multiplayer can be enabled.
+- Configurable adaptive render-distance caps for Eco and Ultra; disabling adaptive distance stops the mod from reducing render distance.
+- Low-end/mobile preset for devices that benefit from a strict graphics profile; this is a manual preset, not Android hardware detection.
+- Local export report includes Java/OS info, logical processors, FPS/frame-time metrics, heap/GC counters, active settings, and a short known-conflict summary.
+- Presence checks for Embeddium, ModernFix, FerriteCore and ImmediatelyFast, plus warnings for a few known overlapping/unsupported combinations.
+- No forced garbage collection, no edits to world saves, no changes to world/server simulation, and no automatic network telemetry.
 
-## Controls
+## Open the panel
 
-Press **O** in-game to open the dashboard. Use the Minecraft Controls menu to change the key binding.
+Open **Options → Video Settings → Optimization Settings**. The key binding **O** also opens the panel in clients where a keyboard input is available. Standard Minecraft buttons are used so the interface can be operated by touch in Android Java launchers that successfully run this Forge version.
 
-The **Export report** button writes a text file under the immersive-optimizator-reports directory in the Minecraft game directory. Reports stay local and are not uploaded automatically.
+## Settings
 
-## Configuration
+The Forge common configuration is normally located at `.minecraft/config/immersiveoptimizator-common.toml`.
 
-The Forge common config is normally at .minecraft/config/immersiveoptimizator-common.toml.
+- `autoProfile`: automatic adaptive profile selection.
+- `profile`: default/manual profile.
+- `useContextProfiles`, `singleplayerProfile`, `multiplayerProfile`: separate manual profiles by play context (used when automatic mode is off).
+- `mobileLowEndMode`: sticky Eco preset for low-end devices.
+- `adaptiveRenderDistance`, `ecoRenderDistanceCap`, `ultraRenderDistanceCap`: render-distance management.
+- `lowFpsThreshold`, `highFrameTimeThresholdMs`: automatic policy thresholds.
+- `performanceMonitoring`: collects client-side FPS/frame-time and JVM metrics.
+- `exportDiagnostics`: controls report export.
+- `compatibilityWarnings`: enables the built-in set of compatibility warnings.
 
-- performanceMonitoring=true: collect diagnostic data and enable automatic decisions.
-- autoProfile=true: adapt profiles based on frame-time metrics.
-- profile="BALANCED": manual profile when auto mode is disabled. Values include ECO, BALANCED, PERFORMANCE, ULTRA_PERFORMANCE, QUALITY, CUSTOM.
-- adaptiveRenderDistance=true: allow Eco/Ultra profiles to reduce render distance.
-- exportDiagnostics=true: enable local report export.
-- experimentalOptimizations=false: reserved for future engine-level changes; no unsafe world changes are performed.
+## Real-world optimization notes
 
-## Important limits
+This mod applies supported vanilla graphics settings and provides diagnostics; it does not yet replace Minecraft's terrain renderer or rewrite chunk generation. It reports JVM heap, not total device RAM, and it cannot read every GPU, driver, thermal or memory-pressure signal on every platform.
 
-- The mod currently applies vanilla graphics settings; it does not replace Minecraft's renderer or rewrite chunk-generation internals.
-- Hardware detection is a heuristic based on logical processor count and maximum JVM heap, not a full GPU benchmark or a reading of total physical RAM.
-- JVM heap is not the same as total system memory.
-- FPS depends on hardware, resolution, world, mods, resource packs, drivers, and server conditions. Improvements must be measured on comparable runs.
-- Turbo is a graphics preset, not CPU/GPU overclocking. No network telemetry is uploaded.
+For Forge 1.20.1, users may separately evaluate compatible versions of:
+- **Embeddium** for a rewritten terrain/rendering pipeline.
+- **ModernFix** for load-time, memory and general performance fixes.
+- **FerriteCore** for memory-use reduction.
+- **ImmediatelyFast** for additional rendering-pipeline optimizations (choose a Forge-compatible build).
 
-## Reproducible testing
+These are optional, separately distributed mods. This project does not download or bundle them. Check each project's current version/loader compatibility before installation. Avoid combinations that overlap, such as Embeddium/Rubidium or Embeddium/OptiFine, and test one change at a time. The built-in scan detects only a few known patterns; it is not a complete mod-conflict detector.
 
-1. Use the same world, location, resolution, resource packs, render distance and other mods.
-2. Let the game warm up for two minutes.
-3. Record at least five 60-second runs with the same movement/scene.
-4. Compare median FPS, p95/p99 frame time, heap, GC deltas and external system CPU usage.
-5. Report both improvements and regressions. CI validates compilation and unit tests, not real-world FPS gains.
+Android compatibility depends on the Java launcher, Forge installation, device GPU/driver, renderer backend, available memory and thermal limits. A mod can expose settings and reduce graphics workload, but cannot guarantee a particular FPS on every phone. The Low-end/Mobile page is available for manual tuning when the launcher supports Forge 1.20.1 mods.
+
+## Benchmark method
+
+1. Back up worlds before testing a new modpack or changing loaders.
+2. Use the same world, location, resolution, shaders/resource packs and view direction.
+3. Warm up for two minutes and run at least five 60-second tests.
+4. Compare median FPS and p95/p99 frame time, not a single peak FPS.
+5. Compare before/after with the same other mods. Report any regressions as well as gains.
+
+GitHub Actions runs unit tests and compiles the Forge mod. CI success confirms compilation/tests, not an FPS improvement on every device.

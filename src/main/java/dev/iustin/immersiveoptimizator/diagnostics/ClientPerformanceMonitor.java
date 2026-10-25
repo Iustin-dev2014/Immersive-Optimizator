@@ -102,7 +102,7 @@ public final class ClientPerformanceMonitor {
                 IMMERSIVE OPTIMIZATOR - LOCAL DIAGNOSTIC REPORT
                 Generated: %s
                 Minecraft: 1.20.1
-                Mod version: 0.4.0-alpha.1
+                Mod version: 0.5.0-alpha.1
                 OS: %s (%s)
                 Java: %s
                 Logical processors: %d
@@ -118,6 +118,14 @@ public final class ClientPerformanceMonitor {
                 GC collections in last window: %d
                 GC time delta in last window: %d ms
                 Frame samples in window: %d
+                Low-end/mobile mode: %s
+                Separate single-player/multiplayer profiles: %s
+                Adaptive render distance: %s
+                Eco render distance cap: %d chunks
+                Ultra render distance cap: %d chunks
+                Critical FPS threshold: %d
+                Critical p95 frame threshold: %.1f ms
+                Known compatibility notes: %s
 
                 Notes:
                 - Heap memory is not total system RAM.
@@ -130,7 +138,11 @@ public final class ClientPerformanceMonitor {
                 ClientOptimizationController.isTurboEnabled(), minecraft.options.renderDistance().get(),
                 minecraft.hasSingleplayerServer() ? "Single-player / integrated server" : "Multiplayer or menu",
                 s.fps(), s.averageFrameMs(), s.p95FrameMs(), s.gcCollectionsDelta(),
-                s.gcTimeDeltaMs(), s.samples());
+                s.gcTimeDeltaMs(), s.samples(), OptimizerConfig.MOBILE_LOW_END_MODE.get(),
+                OptimizerConfig.USE_CONTEXT_PROFILES.get(), OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.get(),
+                OptimizerConfig.ECO_RENDER_DISTANCE_CAP.get(), OptimizerConfig.ULTRA_RENDER_DISTANCE_CAP.get(),
+                OptimizerConfig.LOW_FPS_THRESHOLD.get(), OptimizerConfig.HIGH_FRAME_TIME_THRESHOLD_MS.get(),
+                CompatibilityDiagnostics.summary());
         Path directory = minecraft.gameDirectory.toPath().resolve("immersive-optimizator-reports");
         Files.createDirectories(directory);
         Path output = directory.resolve("report-" + System.currentTimeMillis() + ".txt");
