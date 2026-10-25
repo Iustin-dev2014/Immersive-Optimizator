@@ -2,22 +2,20 @@ package dev.iustin.immersiveoptimizator.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 
-/**
- * Conservative configuration defaults for the first implementation phase.
- * These options are a foundation; they do not imply that all optimization
- * modules are implemented yet.
- */
+/** Configuration for diagnostics and opt-in adaptive client optimization. */
 public final class OptimizerConfig {
     public enum PerformanceProfile {
-        LOW_END,
+        ULTRA_PERFORMANCE,
         BALANCED,
-        HIGH_PERFORMANCE,
+        QUALITY,
         CUSTOM
     }
 
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.EnumValue<PerformanceProfile> PROFILE;
     public static final ForgeConfigSpec.BooleanValue PERFORMANCE_MONITORING;
+    public static final ForgeConfigSpec.BooleanValue AUTO_PROFILE;
+    public static final ForgeConfigSpec.BooleanValue ADAPTIVE_RENDER_DISTANCE;
     public static final ForgeConfigSpec.BooleanValue EXPERIMENTAL_OPTIMIZATIONS;
 
     static {
@@ -25,13 +23,19 @@ public final class OptimizerConfig {
 
         builder.push("general");
         PROFILE = builder
-                .comment("Default profile for future adaptive optimization modules.")
+                .comment("Manual profile used when autoProfile is disabled.")
                 .defineEnum("profile", PerformanceProfile.BALANCED);
         PERFORMANCE_MONITORING = builder
-                .comment("Enable performance metrics when the monitoring module is available.")
+                .comment("Enable low-overhead performance metrics.")
                 .define("performanceMonitoring", true);
+        AUTO_PROFILE = builder
+                .comment("Adapt between Ultra Performance, Balanced and Quality using measured frame times.")
+                .define("autoProfile", true);
+        ADAPTIVE_RENDER_DISTANCE = builder
+                .comment("Allow Ultra Performance to reduce render distance to at most 8 chunks. Disabled by default to preserve the user's distance.")
+                .define("adaptiveRenderDistance", false);
         EXPERIMENTAL_OPTIMIZATIONS = builder
-                .comment("Experimental performance-changing features are opt-in and disabled by default.")
+                .comment("Reserved for future experimental performance-changing features. Disabled by default.")
                 .define("experimentalOptimizations", false);
         builder.pop();
 

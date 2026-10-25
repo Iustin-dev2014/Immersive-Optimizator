@@ -12,10 +12,7 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 
-/**
- * Low-overhead, client-only diagnostics. This class observes performance; it
- * deliberately does not alter rendering, world simulation, or JVM behavior.
- */
+/** Low-overhead client-only diagnostics; it does not mutate JVM or world state. */
 @Mod.EventBusSubscriber(modid = ImmersiveOptimizator.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ClientPerformanceMonitor {
     private static final int WINDOW_SIZE = 600;
@@ -88,24 +85,19 @@ public final class ClientPerformanceMonitor {
                 total += sample;
             }
             averageMs = total / samples.length;
-            p95Ms = samples[(int) Math.ceil(samples.length * 0.95) - 1];
+            p95Ms = PerformanceMath.percentile(samples, 0.95);
         }
 
         long[] gc = readGcTotals();
         long gcCollectionsDelta = Math.max(0L, gc[0] - lastGcCollections);
         long gcTimeDelta = Math.max(0L, gc[1] - lastGcTimeMs);
+        int fps = minecraft.getFps();
 
         ImmersiveOptimizator.LOGGER.info(
                 "Performance sample (10s): fps={}, frameAvgMs={}, frameP95Ms={}, heapMiB={}/{}, gcCollectionsDelta={}, gcTimeDeltaMs={}, samples={}",
-                minecraft.getFps(),
-                round2(averageMs),
-                round2(p95Ms),
-                usedMiB,
-                maxMiB,
-                gcCollectionsDelta,
-                gcTimeDelta,
-                sampleCount
-        );
+                fps, round2(averageMs), round2(p95Ms), usedMiB, maxMiB,
+                gcCollectionsDelta, gcTimeDelta, sampleCount);
+        ClientOptimizationController.onPerformanceSample(fps, p95Ms);
 
         lastGcCollections = gc[0];
         lastGcTimeMs = gc[1];

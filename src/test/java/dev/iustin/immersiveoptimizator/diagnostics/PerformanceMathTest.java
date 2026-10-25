@@ -9,9 +9,11 @@ class PerformanceMathTest {
     @Test
     void calculatesNearestRankPercentileWithoutMutatingInput() {
         double[] values = {40.0, 10.0, 30.0, 20.0};
+        double[] original = values.clone();
 
         assertEquals(40.0, PerformanceMath.percentile(values, 0.95));
         assertEquals(40.0, values[0], "input array must not be sorted in place");
+        assertEquals(original[1], values[1], "all original elements must remain in place");
     }
 
     @Test
