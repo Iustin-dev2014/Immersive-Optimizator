@@ -1,45 +1,47 @@
 # Immersive Optimizator
 
-A Minecraft Forge 1.20.1 client-side performance profiling and adaptive graphics mod, targeting Forge 47.2.0 and Java 17.
+A client-side performance diagnostics and adaptive graphics mod for Minecraft Forge 1.20.1 (Forge 47.2.0, Java 17).
 
-## Current features (0.3.0-alpha.1)
+## Version 0.4.0-alpha.1
 
-- Client-only frame-time sampling with a bounded 600-frame window.
-- A 10-second diagnostic report with FPS, average frame time, p95 frame time, Java heap used/max, and GC collection/time deltas.
-- Adaptive graphics profiles: **Ultra Performance**, **Balanced**, and **Quality**.
-- Manual profile selection via the config file when `autoProfile=false`.
-- Automatic profile changes use hysteresis: poor performance must persist for two report windows before Ultra Performance is selected; Quality requires three stable windows.
-- The Ultra Performance profile can optionally lower render distance to at most 8 chunks. This is disabled by default to preserve the user's 10–12 chunk preference.
-- No forced garbage collection and no changes to world/server simulation.
-- Unit tests for percentile calculations and profile decision thresholds.
+- Hardware-aware startup profile using logical processor count and maximum JVM heap.
+- Profiles: **Eco**, **Balanced**, **Performance**, and **Ultra** (plus Custom/Quality compatibility values).
+- Automatic profile decisions based on FPS and p95 frame time, with hysteresis to avoid rapid switching.
+- In-game dashboard on **O** with profile cycling, automatic mode, adaptive render distance, Turbo preset, and report export.
+- Local diagnostic reports include OS/architecture, Java version, logical processors, heap figures, active profile, render distance, FPS/frame time and GC deltas.
+- Adaptive render distance is enabled by default for Eco/Ultra; Eco targets 4–6 chunks and Ultra caps at 8 chunks.
+- Profile application avoids saving options unless values changed.
+- No forced garbage collection, no world-save edits, no changes to world/server simulation, and no automatic network telemetry.
+
+## Controls
+
+Press **O** in-game to open the dashboard. Use the Minecraft Controls menu to change the key binding.
+
+The **Export report** button writes a text file under the immersive-optimizator-reports directory in the Minecraft game directory. Reports stay local and are not uploaded automatically.
 
 ## Configuration
 
-The Forge common config is normally found at `.minecraft/config/immersiveoptimizator-common.toml`.
+The Forge common config is normally at .minecraft/config/immersiveoptimizator-common.toml.
 
-- `performanceMonitoring=true`: collect diagnostic data and enable automatic decisions.
-- `autoProfile=true`: automatically adapt between profiles using measured FPS and p95 frame time.
-- `profile="BALANCED"`: initial/manual profile when auto profile is disabled. Values: `ULTRA_PERFORMANCE`, `BALANCED`, `QUALITY`, `CUSTOM`.
-- `adaptiveRenderDistance=false`: allow Ultra Performance to reduce render distance to at most 8 chunks. Leave disabled to preserve 10–12 chunks.
-- `experimentalOptimizations=false`: reserved for future experimental features.
+- performanceMonitoring=true: collect diagnostic data and enable automatic decisions.
+- autoProfile=true: adapt profiles based on frame-time metrics.
+- profile="BALANCED": manual profile when auto mode is disabled. Values include ECO, BALANCED, PERFORMANCE, ULTRA_PERFORMANCE, QUALITY, CUSTOM.
+- adaptiveRenderDistance=true: allow Eco/Ultra profiles to reduce render distance.
+- exportDiagnostics=true: enable local report export.
+- experimentalOptimizations=false: reserved for future engine-level changes; no unsafe world changes are performed.
 
-The profile system changes vanilla graphics options and saves them. Review your current options before enabling aggressive settings. Selecting `CUSTOM` prevents automatic profile changes and does not apply a preset.
+## Important limits
 
-## Interpreting measurements
+- The mod currently applies vanilla graphics settings; it does not replace Minecraft's renderer or rewrite chunk-generation internals.
+- Hardware detection is a heuristic based on logical processor count and maximum JVM heap, not a full GPU benchmark or a reading of total physical RAM.
+- JVM heap is not the same as total system memory.
+- FPS depends on hardware, resolution, world, mods, resource packs, drivers, and server conditions. Improvements must be measured on comparable runs.
+- Turbo is a graphics preset, not CPU/GPU overclocking. No network telemetry is uploaded.
 
-- FPS and frame time vary by hardware, world, resolution, mods, and server.
-- Java heap figures are not the same as total process RAM or total system RAM.
-- GC metrics are JVM-wide counters, not proof that GC caused a particular stutter.
-- Chunk loading/generation is not yet directly instrumented in this release; this is a follow-up task.
-- CPU usage is not currently sampled by the mod.
-- No fixed FPS, RAM, or CPU percentage is guaranteed.
+## Reproducible testing
 
-## Reproducible performance testing
-
-1. Use the same world, location, resolution, resource packs, render distance, and other mods.
-2. Let the game warm up for at least two minutes.
+1. Use the same world, location, resolution, resource packs, render distance and other mods.
+2. Let the game warm up for two minutes.
 3. Record at least five 60-second runs with the same movement/scene.
-4. Compare median FPS, p95/p99 frame time, heap used/max, GC deltas, and system CPU usage from an external monitor.
-5. Report both improvements and regressions; do not compare a newly generated area with a static scene.
-
-The CI workflow runs unit tests and compiles the Forge mod using Java 17.
+4. Compare median FPS, p95/p99 frame time, heap, GC deltas and external system CPU usage.
+5. Report both improvements and regressions. CI validates compilation and unit tests, not real-world FPS gains.

@@ -10,9 +10,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Entry point for Immersive Optimizator.
  *
- * <p>Phase 1 establishes the Forge mod, configuration foundation and build
- * pipeline. Performance-changing systems will be introduced in later phases
- * behind explicit configuration and compatibility checks.</p>
+ * <p>Client-side diagnostics and reversible adaptive graphics profiles are initialized here.</p>
  */
 @Mod(ImmersiveOptimizator.MOD_ID)
 public final class ImmersiveOptimizator {
@@ -21,6 +19,6 @@ public final class ImmersiveOptimizator {
 
     public ImmersiveOptimizator() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, OptimizerConfig.SPEC);
-        LOGGER.info("Immersive Optimizator initialized. Experimental optimizations remain opt-in.");
+        LOGGER.info("Immersive Optimizator initialized. Dashboard key: O. Diagnostics remain local.");
     }
 }
