@@ -1,6 +1,7 @@
 package dev.iustin.immersiveoptimizator.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
+import dev.iustin.immersiveoptimizator.ImmersiveOptimizator;
 
 /** User-configurable, client-side options for adaptive graphics and diagnostics. */
 public final class OptimizerConfig {
@@ -62,6 +63,15 @@ public final class OptimizerConfig {
 
         builder.pop();
         SPEC = builder.build();
+    }
+
+    /** Persist changes made by the in-game settings panel to the common TOML config. */
+    public static void save() {
+        try {
+            SPEC.save();
+        } catch (RuntimeException exception) {
+            ImmersiveOptimizator.LOGGER.warn("Could not persist Immersive Optimizator settings; they may reset on restart.", exception);
+        }
     }
 
     private OptimizerConfig() {}

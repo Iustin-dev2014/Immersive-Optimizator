@@ -145,6 +145,7 @@ public final class ClientOptimizationController {
         activeProfile = next;
         storeManualProfile(next, minecraft);
         applyProfile(minecraft, next);
+        OptimizerConfig.save();
     }
 
     public static void applyManualProfile(PerformanceProfile profile) {
@@ -155,6 +156,7 @@ public final class ClientOptimizationController {
         activeProfile = normalize(profile);
         storeManualProfile(activeProfile, minecraft);
         applyProfile(minecraft, activeProfile);
+        OptimizerConfig.save();
     }
 
     public static void toggleAutomatic() {
@@ -174,6 +176,7 @@ public final class ClientOptimizationController {
             activeProfile = configuredManualProfile(Minecraft.getInstance());
         }
         applyProfile(Minecraft.getInstance(), activeProfile);
+        OptimizerConfig.save();
     }
 
     public static void toggleContextProfiles() {
@@ -184,6 +187,7 @@ public final class ClientOptimizationController {
         }
         activeProfile = configuredManualProfile(Minecraft.getInstance());
         applyProfile(Minecraft.getInstance(), activeProfile);
+        OptimizerConfig.save();
     }
 
     public static void cycleSingleplayerProfile() {
@@ -193,6 +197,7 @@ public final class ClientOptimizationController {
             activeProfile = OptimizerConfig.SINGLEPLAYER_PROFILE.get();
             applyProfile(Minecraft.getInstance(), activeProfile);
         }
+        OptimizerConfig.save();
     }
 
     public static void cycleMultiplayerProfile() {
@@ -203,6 +208,7 @@ public final class ClientOptimizationController {
             activeProfile = OptimizerConfig.MULTIPLAYER_PROFILE.get();
             applyProfile(Minecraft.getInstance(), activeProfile);
         }
+        OptimizerConfig.save();
     }
 
     private static PerformanceProfile nextManualProfile(PerformanceProfile current) {
@@ -228,6 +234,7 @@ public final class ClientOptimizationController {
             activeProfile = configuredManualProfile(Minecraft.getInstance());
             applyProfile(Minecraft.getInstance(), activeProfile);
         }
+        OptimizerConfig.save();
     }
 
     public static void toggleLowEndMode() {
@@ -257,23 +264,27 @@ public final class ClientOptimizationController {
             profileBeforeLowEnd = null;
         }
         applyProfile(minecraft, activeProfile);
+        OptimizerConfig.save();
     }
 
     public static void toggleAdaptiveDistance() {
         OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.set(!OptimizerConfig.ADAPTIVE_RENDER_DISTANCE.get());
         applyProfile(Minecraft.getInstance(), getActiveProfile());
+        OptimizerConfig.save();
     }
 
     public static void cycleEcoRenderDistanceCap() {
         int[] values = {4, 5, 6, 8, 10, 12};
         OptimizerConfig.ECO_RENDER_DISTANCE_CAP.set(nextValue(OptimizerConfig.ECO_RENDER_DISTANCE_CAP.get(), values));
         applyProfile(Minecraft.getInstance(), getActiveProfile());
+        OptimizerConfig.save();
     }
 
     public static void cycleUltraRenderDistanceCap() {
         int[] values = {4, 6, 8, 10, 12, 16};
         OptimizerConfig.ULTRA_RENDER_DISTANCE_CAP.set(nextValue(OptimizerConfig.ULTRA_RENDER_DISTANCE_CAP.get(), values));
         applyProfile(Minecraft.getInstance(), getActiveProfile());
+        OptimizerConfig.save();
     }
 
     private static int nextValue(int current, int[] values) {
@@ -286,6 +297,7 @@ public final class ClientOptimizationController {
     public static void cycleLowFpsThreshold() {
         int[] values = {20, 25, 30, 35, 40, 45};
         OptimizerConfig.LOW_FPS_THRESHOLD.set(nextValue(OptimizerConfig.LOW_FPS_THRESHOLD.get(), values));
+        OptimizerConfig.save();
     }
 
     public static void cycleHighFrameTimeThreshold() {
@@ -299,18 +311,22 @@ public final class ClientOptimizationController {
             }
         }
         OptimizerConfig.HIGH_FRAME_TIME_THRESHOLD_MS.set(next);
+        OptimizerConfig.save();
     }
 
     public static void toggleMonitoring() {
         OptimizerConfig.PERFORMANCE_MONITORING.set(!OptimizerConfig.PERFORMANCE_MONITORING.get());
+        OptimizerConfig.save();
     }
 
     public static void toggleExportDiagnostics() {
         OptimizerConfig.EXPORT_DIAGNOSTICS.set(!OptimizerConfig.EXPORT_DIAGNOSTICS.get());
+        OptimizerConfig.save();
     }
 
     public static void toggleCompatibilityWarnings() {
         OptimizerConfig.COMPATIBILITY_WARNINGS.set(!OptimizerConfig.COMPATIBILITY_WARNINGS.get());
+        OptimizerConfig.save();
     }
 
     private static PerformanceProfile normalize(PerformanceProfile profile) {
